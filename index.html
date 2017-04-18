@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="Hexo">
+<meta property="og:url" content="http://joshforb.es/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Hexo">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://joshforb.es"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-Persistent-Polymorphism" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/04/17/Persistent-Polymorphism/" class="article-date">
+  <time datetime="2017-04-18T01:45:16.000Z" itemprop="datePublished">2017-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/04/17/Persistent-Polymorphism/">Persistent Polymorphism</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Adding-behavior-with-persistent-polymorphism"><a href="#Adding-behavior-with-persistent-polymorphism" class="headerlink" title="Adding behavior with persistent polymorphism"></a>Adding behavior with persistent polymorphism</h1><p>In one of my current projects, I needed to define the behavior of an object based on user choices. The project involves a user creating a job posting. Durning the creation process they will choose how they wish to publish the job - using a job credit, as a daily rate, on a recruiting plan, etc. This choice alters what happens when the user later changes the state of the job (from draft to open, draft to scheduled, open to closed). You can imagine how this could lead to some pretty nasty code:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line">// Job Model</div><div class="line"></div><div class="line">public function open()</div><div class="line">&#123;</div><div class="line">	if ($this-&gt;publish_type === &apos;credit&apos;) &#123;</div><div class="line">		// execute before opening a credit job</div><div class="line">	&#125; elseif ($this-&gt;publish_type === &apos;daily) &#123;</div><div class="line">		// execute before to opening a daily job</div><div class="line">	&#125; else &#123;</div><div class="line">		// an elseif for each type</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	// execute shared behavior regardless of type.</div><div class="line"></div><div class="line">	if ($this-&gt;publish_type === &apos;credit&apos;) &#123;</div><div class="line">		// this whole song and dance again</div><div class="line">	&#125; elseif ($this-&gt;publish_type === &apos;daily) &#123;</div><div class="line">		// if there is code that needs to be executed after</div><div class="line">	&#125; else &#123;</div><div class="line">		//</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>This method would have to be modified anytime a new publish type is added. Not to mention having similar methods for close, schedule, etc. This is not a maintainable approach.</p>
+<p>Instead I would like to abstract the behavior for each of the types (daily, credit, etc) into their own classes. That way new behavior can be added without changing the existing code. Consider if the open method could look like this instead:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">// Job Model</div><div class="line"></div><div class="line">public function open()</div><div class="line">&#123;</div><div class="line">	$this-&gt;publishableType()-&gt;beforeOpen();</div><div class="line"></div><div class="line">	// execute shared job behavior regardless of type.</div><div class="line"></div><div class="line">	$this-&gt;publishableType()-&gt;afterOpen();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>Much nicer. In order to make this happen the publishable type needs to be persisted to the database. This can be accomplished by having a publishable_type column on the job table to save the namespace of the publish type class.</p>
+<p><code>App\Daily</code> or  <code>App\Credit</code> or <code>App\Whatever</code></p>
+<p>Then the publishableType() method can simply instantiate the type class.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">// Job Model</div><div class="line"></div><div class="line">public function publishableType()</div><div class="line">&#123;</div><div class="line">	return new $this-&gt;publishable_type($this);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>Now any state changes associated with a job can simply have before and after hooks that point to behavior in other classes.  Here is a semi-complete picture of how it looks put together.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div></pre></td><td class="code"><pre><div class="line">class Job</div><div class="line">&#123;</div><div class="line">	public function open()</div><div class="line">	&#123;</div><div class="line">		$this-&gt;publishableType()-&gt;beforeOpen();</div><div class="line"></div><div class="line">		// shared open behavior</div><div class="line"></div><div class="line">		$this-&gt;publishableType()-&gt;afterOpen();</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	public function close()</div><div class="line">	&#123;</div><div class="line">		$this-&gt;publishableType()-&gt;beforeClose();</div><div class="line"></div><div class="line">		// shared close behavior</div><div class="line"></div><div class="line">		$this-&gt;publishableType()-&gt;beforeClose();</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	// Any other state change methods</div><div class="line"></div><div class="line">	public function publishableType()</div><div class="line">	&#123;</div><div class="line">		return new $this-&gt;publishable_type($this);</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div></pre></td><td class="code"><pre><div class="line">class Daily</div><div class="line">&#123;</div><div class="line">	private $job;</div><div class="line"></div><div class="line">	public function __construct(Job $job)</div><div class="line">	&#123;</div><div class="line">		$this-&gt;job = $job;</div><div class="line">  &#125;</div><div class="line"></div><div class="line">	public function beforeOpen()</div><div class="line">	&#123;</div><div class="line">		// whatever should be done before opening a daily job</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	public function beforeOpen()</div><div class="line">	&#123;</div><div class="line">		// whatever should be done after opening a daily job</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	public function beforeClose()</div><div class="line">	&#123;</div><div class="line">		// whatever should be done before closing a daily job</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	public function afterClose()</div><div class="line">	&#123;</div><div class="line">		// whatever should be done after closing a daily job</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	// Any other hooks</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>And that is it. Now a new publishable type can be added simply by creating a new class. I like how this solution turned out but would love to hear your thoughts in the comments or on twitter.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://joshforb.es/2017/04/17/Persistent-Polymorphism/" data-id="cj1mw0vmd0001s59ydw27r5wn" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2017/04/17/Persistent-Polymorphism/">Persistent Polymorphism</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 Josh Forbes<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>
